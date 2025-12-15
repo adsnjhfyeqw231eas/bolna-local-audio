@@ -1,0 +1,36 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    platform: linux/arm64
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    command: serve
+
+  bolna:
+    build: ./bolna
+    platform: linux/arm64
+    depends_on:
+      - ollama
+    volumes:
+      - ./audio:/audio
+    command: sleep infinity
+
+  whisper:
+    build: ./whisper
+    platform: linux/arm64
+    volumes:
+      - ./audio:/audio
+    command: sleep infinity
+
+  piper:
+    build: ./piper
+    platform: linux/arm64
+    volumes:
+      - ./audio:/audio
+    command: sleep infinity
+
+volumes:
+  ollama:
+
