@@ -162,50 +162,126 @@ Verify:
 
 docker ps
 
-STEP 7 — PULL SMALL LLM
-docker exec ollama ollama pull qwen2.5:3b
 
-STEP 8 — DOWNLOAD MODELS (ONCE)
+
+~~~~~~~~~~~~~~~README modification required~~~~~~~~~~~~~~~
+
+✅ CURRENT STATE (CONFIRMED)
+
+You have these running containers:
+
+bolna-local-audio-bolna-1
+bolna-local-audio-whisper-1
+bolna-local-audio-piper-1
+bolna-local-audio-ollama-1
+
+
+We will use these exact names.
+
+✅ STEP 7 — Pull a Small LLM (CORRECT COMMAND)
+docker exec bolna-local-audio-ollama-1 ollama pull qwen2.5:3b
+
+
+Verify:
+
+docker exec bolna-local-audio-ollama-1 ollama list
+
+
+You should see:
+
+qwen2.5:3b
+
+
+Verify:
+curl http://localhost:11434/
+Ollama is running%                  
+
+
+
+✅ STEP 8 — Download Audio Models (HOST MACHINE)
+
+From project root (bolna-local-audio/):
+
 mkdir -p audio/models audio/voices
 
-
-Whisper model:
-
+Whisper model (STT)
 curl -L -o audio/models/ggml-base.en.bin \
 https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
 
-
-Piper voice:
-
+Piper voice (TTS)
 curl -L -o audio/voices/en_US-amy-medium.onnx \
 https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx
 
-STEP 9 — FINAL run.sh
+
+Verify:
+
+ls audio/models
+ls audio/voices
+
+✅ STEP 9 — Create WORKING run.sh
+
+Create the script in project root:
+
+nano run.sh
+
+
+Paste THIS EXACT SCRIPT:
+
 #!/bin/bash
 set -e
 
 echo "🎙 Speak for 5 seconds..."
 sox -d audio/input.wav trim 0 5
 
-docker exec whisper whisper \
+echo "📝 Transcribing..."
+docker exec bolna-local-audio-whisper-1 whisper \
   -m /audio/models/ggml-base.en.bin \
   -f /audio/input.wav \
   -otxt
 
 TEXT=$(cat audio/input.wav.txt)
+echo "🗣 You said: $TEXT"
 
-RESPONSE=$(docker exec ollama ollama run qwen2.5:3b "$TEXT")
+echo "🧠 Thinking..."
+RESPONSE=$(docker exec bolna-local-audio-ollama-1 \
+  ollama run qwen2.5:3b "$TEXT")
 
-echo "$RESPONSE" | docker exec -i piper piper \
+echo "🤖 Agent: $RESPONSE"
+
+echo "🔊 Speaking..."
+echo "$RESPONSE" | docker exec -i bolna-local-audio-piper-1 piper \
   --model /audio/voices/en_US-amy-medium.onnx \
   --output_file /audio/out.wav
 
 afplay audio/out.wav
 
+
+Save & exit.
+
+Make executable:
+
 chmod +x run.sh
 
-STEP 10 — RUN
+✅ STEP 10 — RUN IT 🎧
 ./run.sh
+
+Expected flow
+
+Terminal prompts you to speak
+
+You speak for 5 seconds
+
+Whisper transcribes
+
+Ollama generates response
+
+Piper speaks it
+
+Audio plays via Mac speakers
+
+
+
+
 
 
 🎧 Mic → Whisper → Ollama → Piper → Speaker
@@ -248,3 +324,12 @@ docker compose build bolna
 Docker compose up -d bona
 
 
+
+
+Bash run.sh Troubleshooting:
+ % docker exec bolna-local-audio-whisper-1 sh -c "find / -type f -name main 2>/dev/null | head -n 1"
+
+/whisper/build/bin/main
+
+git rm -r --cached
+git commit -m "Stop tracking audio/"
